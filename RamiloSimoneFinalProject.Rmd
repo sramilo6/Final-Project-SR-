@@ -1,0 +1,161 @@
+---
+title: "Gene Expression Final Project"
+author: "Simone Ramilo"
+date: "2026-10-18"
+output: pdf_document
+---
+
+```{r}
+library(tidyverse)
+library(gridExtra)
+library(ggpubr)
+library(ComplexHeatmap)
+library(circlize)
+```
+
+
+```{r}
+# This project looks at RNA-seq data for selected genes. The gene chosen was
+# RBM5, and CFLAR was chosen as the second gene for comparison. Summary
+# statistics and some visualizations are used to examine the gene expression
+# data. Tissue type is used as a covariate to compare RBM5 expression
+# between tumor and normal samples.
+
+setwd("/Users/simoner/Downloads/Foundations_DS")
+
+# loads in the count matrix and metadata
+counts <- read.csv("counts.csv", row.names = 1)
+metadata <-  read.csv("meta_data.csv", row.names = 1)
+```
+
+```{r}
+# selects RBM5 as the primary gene, and CFLAR as the second gene
+gene1 <- "ENSG00000003756.17"
+gene2 <- "ENSG00000003402.20"
+```
+```{r}
+# this extracts the RBM5 count data
+rbm5 <- as.numeric(counts[gene1, ])
+
+# generates summary statistics
+summary(rbm5)
+sd(rbm5)
+```
+
+```{r}
+# extracts the CFLAR count data
+cflar <- as.numeric(counts[gene2, ])
+
+# generates summary statistics for second gene
+summary(cflar)
+sd(cflar)
+```
+
+```{r}
+
+# creates a histogram to show distribution of RBM5 counts
+ggplot(data.frame(rbm5), aes(x = rbm5)) + geom_histogram(
+  fill = "steelblue",
+  color = "black") +
+  labs(
+    title = "Distribution of RBM5",
+    x = "RBM5 Expression Counts",
+    y = "Frequency"
+  )
+```
+```{r}
+# creates a scatter plot to compare the two genes
+ggplot(data.frame(rbm5, cflar), aes(x = rbm5, y = cflar)) + 
+  geom_point(color = "steelblue",
+             alpha = 0.35) +
+  labs(
+    title = "RBM5 and CFLAR Expression",
+    x = "RBM5 Expression Counts",
+    y = "CFLAR Expression Counts"
+  )
+```
+```{r}
+# combines RBM5 counts with tissue type covariate
+gene_data <- data.frame(
+  rbm5 = rbm5,
+  tissue_type = metadata$tissue_type
+)
+
+# creates a violin plot to compare RBM5 counts by tissue type
+ggplot(gene_data, aes(x = tissue_type, y = rbm5, fill = tissue_type)) + 
+  geom_violin(alpha = 0.6) + geom_jitter(
+    width = 0.12,
+    alpha = 0.35,
+    size = 1.5
+  ) +
+  scale_fill_manual(values = c(
+    "Tumor" = "purple3",
+    "Normal" = "Lightblue"
+  )) +
+  labs(
+    title = "RBM5 Expression by Tissue Type",
+    x = "Tissue Type",
+    y = "RBM5 Counts"
+  ) + theme(legend.position = "none")
+```
+```{r}
+#creates a box plot to compare RBM5 counts
+ggplot(gene_data, aes(x = tissue_type, y = rbm5, fill = tissue_type)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c(
+    "Tumor" = "thistle2",
+    "Normal" = "royalblue3"
+    )) +
+  labs(
+    title = "RBM5 Expression by Tissue Type",
+    x = "Tissue Type",
+    y = "RBM5 Expression Counts"
+  ) + theme(legend.position = "none")
+
+```
+
+```{r}
+# selects 10 genes and creates smaller matrix with selected genes
+heatmap_genes <- rownames(counts)[1:10]
+
+heatmap_genes
+
+heatmap_data <- counts[heatmap_genes, ]
+```
+
+
+```{r}
+# creates an annotation bar showing tissue type
+annotation_bar <- HeatmapAnnotation(
+  tissue_type = metadata$tissue_type,
+  col = list(
+      tissue_type = c(
+        "Normal" = "lightpink",
+        "Tumor" = "honeydew2"
+      )
+  )
+)
+
+# creates a heatmap with the 10 selected genes with tissue type as an
+# annotation bar
+Heatmap(
+  heatmap_data,
+  name = "Counts",
+  top_annotation = annotation_bar,
+  show_column_names = FALSE,
+  row_title = "Genes",
+  column_title = "Samples"
+)
+```
+```{r}
+# creates a CDF plot to compare RBM5 expression counts by tissue type
+ggplot(gene_data, aes(x = rbm5, color = tissue_type)) +
+  stat_ecdf(geom = "step") +
+  labs(
+    title = "Cumulative Distribution of RBM5 by Tissue Type",
+    x = "RBM5 Expression Counts",
+    y = "Cumulative Probability",
+    color = "Tissue Type"
+  )
+```
+
